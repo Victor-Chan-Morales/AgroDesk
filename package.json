@@ -6,7 +6,8 @@
     "dev": "next dev --turbo",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test:stock": "tsc -p tsconfig.stock-tests.json && node --test .stock-tests/tests/stock.test.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

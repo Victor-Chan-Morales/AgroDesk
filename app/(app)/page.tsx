@@ -5,6 +5,7 @@ import {
 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
+import { StockStatusBadge } from "@/components/stock-status-badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent } from "@/components/ui/card"
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
@@ -44,7 +45,7 @@ export default async function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard title="Total Productos" value={data.totalProducts.toString()} icon={Package} subtitle="Productos registrados" />
-        <StatCard title="Stock Bajo" value={data.lowStockProductsCount.toString()} icon={AlertTriangle} subtitle="Productos con stock critico" />
+        <StatCard title="Stock Bajo" value={data.lowStockProductsCount.toString()} icon={AlertTriangle} subtitle="Productos que requieren reabastecimiento" />
         <StatCard title="Valor Total" value={`Q${data.totalValue.toLocaleString("en", { minimumFractionDigits: 2 })}`} icon={DollarSign} subtitle="Valor total del inventario" />
         <StatCard title="Productos Activos" value={data.activeProducts.toString()} icon={TrendingUp} subtitle={`${data.totalProducts > 0 ? Math.round((data.activeProducts / data.totalProducts) * 100) : 0}% del inventario`} />
       </div>
@@ -58,7 +59,7 @@ export default async function DashboardPage() {
       <Card className="mt-6">
         <CardHeader>
           <CardTitle>Productos con Stock Bajo</CardTitle>
-          <CardDescription>Productos que requieren reabastecimiento inmediato</CardDescription>
+          <CardDescription>Productos que requieren reabastecimiento</CardDescription>
           <CardAction>
             <Link href="/inventario"><Button variant="default" size="sm">Ver Todos</Button></Link>
           </CardAction>
@@ -82,7 +83,7 @@ export default async function DashboardPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.lowStockList.map((product: any) => (
+                {data.lowStockList.map((product) => (
                   <TableRow key={product.id}>
                     <TableCell className="font-medium">{product.id}</TableCell>
                     <TableCell>{product.name}</TableCell>
@@ -90,7 +91,7 @@ export default async function DashboardPage() {
                     <TableCell>{product.stock}</TableCell>
                     <TableCell>{product.min}</TableCell>
                     <TableCell>
-                      <Badge variant={product.status === "Critico" ? "destructive" : "outline"}>{product.status}</Badge>
+                      <StockStatusBadge status={product.status} />
                     </TableCell>
                   </TableRow>
                 ))}

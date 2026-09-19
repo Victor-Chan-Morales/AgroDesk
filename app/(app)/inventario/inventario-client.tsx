@@ -6,7 +6,8 @@ import { StatCard } from "@/components/stat-card"
 import { DataTable, type Column } from "@/components/data-table"
 import { RowActions } from "@/components/row-actions"
 import { Package, DollarSign, AlertTriangle, Search, Plus, FileDown, FileSpreadsheet, Pencil } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { StockStatusBadge } from "@/components/stock-status-badge"
+import type { InventoryProduct, InventoryLot } from "@/types/inventory"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent } from "@/components/ui/card"
@@ -17,31 +18,31 @@ import { exportCSV } from "@/lib/export-csv"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 
-export function InventarioClient({ initialProducts }: { initialProducts: any[] }) {
+export function InventarioClient({ initialProducts }: { initialProducts: InventoryProduct[] }) {
   const router = useRouter()
   const [search, setSearch] = useState("")
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingProduct, setEditingProduct] = useState<any>(null)
+  const [editingProduct, setEditingProduct] = useState<InventoryProduct | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Lotes state
   const [isLotesModalOpen, setIsLotesModalOpen] = useState(false)
-  const [selectedProductLotes, setSelectedProductLotes] = useState<any>(null)
-  const [lotes, setLotes] = useState<any[]>([])
+  const [selectedProductLotes, setSelectedProductLotes] = useState<InventoryProduct | null>(null)
+  const [lotes, setLotes] = useState<InventoryLot[]>([])
 
   const products = initialProducts
   const totalProducts = products.length
-  const totalValue = products.reduce((sum: number, p: any) => sum + p.total, 0)
-  const lowStock = products.filter((p: any) => p.status === "Critico" || p.status === "Bajo").length
+  const totalValue = products.reduce((sum, p) => sum + p.total, 0)
+  const lowStock = products.filter((p) => p.status.needsRestock).length
 
-  const filteredProducts = products.filter((p: any) =>
+  const filteredProducts = products.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     p.code.toLowerCase().includes(search.toLowerCase())
   )
 
   const handleOpenCreate = () => { setEditingProduct(null); setIsModalOpen(true) }
-  const handleOpenEdit = (product: any) => { setEditingProduct(product); setIsModalOpen(true) }
-  const handleOpenLotes = (product: any) => {
+  const handleOpenEdit = (product: InventoryProduct) => { setEditingProduct(product); setIsModalOpen(true) }
+  const handleOpenLotes = (product: InventoryProduct) => {
     setSelectedProductLotes(product);
     setLotes(product.lotes || []);
     setIsLotesModalOpen(true);
@@ -88,10 +89,10 @@ export function InventarioClient({ initialProducts }: { initialProducts: any[] }
 
   const handleExportCSV = () => {
     exportCSV("inventario", ["No", "Codigo", "Producto", "Proveedor", "Factura", "Cantidad", "Precio Compra", "Total", "Estado"],
-      filteredProducts.map((p: any) => [p.no, p.code, p.name, p.supplier, p.invoice, p.qty, p.price, p.total, p.status]))
+      filteredProducts.map((p) => [p.no, p.code, p.name, p.supplier, p.invoice, p.qty, p.price, p.total, p.status.label]))
   }
 
-  const columns: Column<any>[] = [
+  const columns: Column<InventoryProduct>[] = [
     { key: "no", header: "No.", render: (r) => r.no },
     { key: "code", header: "Codigo", render: (r) => <span className="font-medium">{r.code}</span> },
     {
@@ -101,7 +102,7 @@ export function InventarioClient({ initialProducts }: { initialProducts: any[] }
           <p className="text-xs text-muted-foreground">{r.desc}</p>
           {r.lotes && r.lotes.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1">
-              {r.lotes.map((l: any, idx: number) => (
+              {r.lotes.map((l, idx) => (
                 <span key={idx} className="text-[10px] bg-muted/50 px-1.5 py-0.5 rounded text-muted-foreground border">
                   Lote: {l.numero_lote || "S/N"}
                 </span>
@@ -119,7 +120,7 @@ export function InventarioClient({ initialProducts }: { initialProducts: any[] }
     { key: "total", header: "Total (Q)", render: (r) => <span className="font-medium">Q{Number(r.total).toFixed(2)}</span> },
     {
       key: "status", header: "Estado", render: (r) => (
-        <Badge variant={r.status === "Critico" ? "destructive" : r.status === "Bajo" ? "secondary" : "outline"}>{r.status}</Badge>
+        <StockStatusBadge status={r.status} />
       )
     },
     {
@@ -232,7 +233,7 @@ export function InventarioClient({ initialProducts }: { initialProducts: any[] }
                     </tr>
                   </thead>
                   <tbody>
-                    {lotes.map((lote: any, idx: number) => (
+                    {lotes.map((lote, idx) => (
                       <tr key={idx} className="border-t">
                         <td className="px-4 py-3">{lote.numero_lote}</td>
                         <td className="px-4 py-3">{lote.fecha_vencimiento || "N/A"}</td>

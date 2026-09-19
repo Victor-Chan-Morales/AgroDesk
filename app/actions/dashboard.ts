@@ -2,6 +2,17 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidateTag, unstable_cache } from "next/cache";
+import { classifyStock } from "@/lib/inventory/stock-rules";
+import { totalStock, type StockStatus } from "@/lib/inventory/stock";
+
+interface LowStockProduct {
+  id: string;
+  name: string;
+  category: string;
+  stock: number;
+  min: number;
+  status: StockStatus;
+}
 
 export const getDashboardData = unstable_cache(
   async () => {
@@ -36,17 +47,16 @@ export const getDashboardData = unstable_cache(
     let activeProducts = 0;
     let totalValue = 0;
     let lowStockProductsCount = 0;
-    const lowStockList: any[] = [];
+    const lowStockList: LowStockProduct[] = [];
 
     productos?.forEach((p: any) => {
       totalProducts++;
-      const stockTotal = p.lotes
-        ? p.lotes.reduce((sum: number, l: any) => sum + (l.stock_actual || 0), 0)
-        : 0;
+      const stockTotal = totalStock(p.lotes);
+      const status = classifyStock({ quantity: stockTotal, minimum: p.stock_minimo });
       if (stockTotal > 0) activeProducts++;
       totalValue += stockTotal * p.precio_compra;
 
-      if (stockTotal <= p.stock_minimo) {
+      if (status.needsRestock) {
         lowStockProductsCount++;
         lowStockList.push({
           id: `P-${p.id_producto.toString().padStart(3, "0")}`,
@@ -54,7 +64,7 @@ export const getDashboardData = unstable_cache(
           category: p.categorias?.nombre || "Sin Categoria",
           stock: stockTotal,
           min: p.stock_minimo,
-          status: stockTotal === 0 ? "Agotado" : "Critico",
+          status,
         });
       }
     });
@@ -107,6 +117,6 @@ export const getDashboardData = unstable_cache(
       recentSalesList,
     };
   },
-  ["get-dashboard-data"],
+  ["get-dashboard-data-stock-rules-v1"],
   { revalidate: 60, tags: ["dashboard"] }
 );

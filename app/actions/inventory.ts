@@ -3,10 +3,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidateTag, unstable_cache } from "next/cache";
+import { classifyStock } from "@/lib/inventory/stock-rules";
+import { totalStock } from "@/lib/inventory/stock";
+import type { InventoryProduct } from "@/types/inventory";
 
 // ─── Cached read (uses service-role client — no cookies, safe inside cache) ──
 export const getProducts = unstable_cache(
-  async () => {
+  async (): Promise<InventoryProduct[]> => {
     const supabase = createAdminClient();
 
     const { data: productos, error } = await supabase
@@ -23,14 +26,8 @@ export const getProducts = unstable_cache(
     }
 
     return productos.map((product: any) => {
-      const totalStock = product.lotes
-        ? product.lotes.reduce((sum: number, lote: any) => sum + (lote.stock_actual || 0), 0)
-        : 0;
-
-      let status = "Normal";
-      if (totalStock === 0) status = "Agotado";
-      else if (totalStock <= product.stock_minimo) status = "Critico";
-      else if (totalStock <= product.stock_minimo * 1.5) status = "Bajo";
+      const quantity = totalStock(product.lotes);
+      const status = classifyStock({ quantity, minimum: product.stock_minimo });
 
       return {
         no: product.id_producto,
@@ -39,17 +36,17 @@ export const getProducts = unstable_cache(
         desc: product.categorias?.nombre || "--",
         supplier: "--",
         invoice: "--",
-        qty: totalStock,
+        qty: quantity,
         price: product.precio_compra,
         precio_venta: product.precio_venta,
         stock_minimo: product.stock_minimo,
-        total: totalStock * product.precio_compra,
+        total: quantity * product.precio_compra,
         status,
         lotes: product.lotes || [],
       };
     });
   },
-  ["get-products"],
+  ["get-products-stock-rules-v1"],
   { revalidate: 60, tags: ["inventario"] }
 );
 
